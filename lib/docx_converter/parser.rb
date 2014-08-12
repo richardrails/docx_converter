@@ -141,17 +141,21 @@ module DocxConverter
           
         when "pStyle"
           # This is a reference to one of Word's paragraph-level styles
-          case nd["w:val"]
-            when "Title"
-              add = "{: .class = 'title' }\n"
-            when "Heading1"
-              add = "# "
-            when "Heading2"
-              add = "## "
-            when "Quote"
-              add = "> "
+          if nd.text.present?
+            case nd["w:val"]
+              when "Title", "Nadpis"
+                add = "{: .class = 'title' }\n"
+              when "Heading1", "Nadpis1"
+
+                # require 'ruby-debug'; debugger; true;
+                add = "# "
+              when "Heading2", "Nadpis2"
+                add = "## "
+              when "Quote"
+                add = "> "
+            end
           end
-            
+
         when "r"
           # This corresponds to Word's character/inline node. Word's XML is not nested for formatting, wo we cannot descend recursively and 'close' kramdown's formatting in the recursion. Rather, we have to look ahead if this node is formatted, and if yes, set a formatting prefix and postfix which is required for kramdown (e.g. **bold**).
           prefix = postfix = ""
