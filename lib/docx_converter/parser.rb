@@ -160,7 +160,7 @@ module DocxConverter
           # This corresponds to Word's character/inline node. Word's XML is not nested for formatting, wo we cannot descend recursively and 'close' kramdown's formatting in the recursion. Rather, we have to look ahead if this node is formatted, and if yes, set a formatting prefix and postfix which is required for kramdown (e.g. **bold**).
           prefix = postfix = ""
           first_child = nd.children.first
-          
+
           case first_child.name
           when "rPr"
             # This inline node is formatted. The first child always specifies the formatting of the subsequent 't' (text) node.
@@ -168,28 +168,28 @@ module DocxConverter
             case format_node.name
             when "b"
               # This is regular (non-style) bold
-              prefix = postfix = "**"
-            when "i"
+              prefix = postfix = "**" if nd.text.present?
+              when "i"
               # This is regular (non-style) italic
-              prefix = postfix = "*"
+              prefix = postfix = "*" if nd.text.present?
             when "smallCaps"
               # This is regular (non-style) italic
               prefix = " name("
               postfix = ")"
-              
+
             when "rStyle"
               # This is a reference to one of Word's style names
               case format_node.attributes["val"].value
               when "Strong"
                 # "Strong" is a predefined Word style
                 # This node is missing the xml:space="preserve" attribute, so we need to set the spaces ourselves.
-                prefix = " **"
-                postfix = "** "
+                prefix = " **"  if nd.text.present?
+                postfix = "** " if nd.text.present?
               when /Emph.*/
                 # "Emph..." is a predefined Word style. In English Word it's 'Emphasis', in French it's 'Emphaseitaliques'
                 # This node is missing the xml:space="preserve" attribute, so we need to set the spaces ourselves.
-                prefix = " *"
-                postfix = "* "
+                prefix = " *"  if nd.text.present?
+                postfix = "* "  if nd.text.present?
               end
             end
             add = prefix + parse_content(nd,depth) + postfix
@@ -201,7 +201,7 @@ module DocxConverter
               # this is a Word page break
               add = "<br style='page-break-before:always;'>"
             end
-            
+
           else
             add = parse_content(nd,depth)
           end
