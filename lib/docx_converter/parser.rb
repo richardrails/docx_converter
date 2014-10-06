@@ -232,12 +232,14 @@ module DocxConverter
         when "drawing"
           image_nodes = nd.xpath(".//a:blip", :a => 'http://schemas.openxmlformats.org/drawingml/2006/main')
           image_node = image_nodes.first
-          image_id = image_node.attributes["embed"].value
-          image_path_zip = File.join("word", @relationships_hash[image_id])
-          
-          extracted_imagename = extract_image(image_path_zip)
-          
-          add = "![](#{ extracted_imagename })\n"
+          if image_node
+            image_id = image_node.attributes["embed"].value
+            image_path_zip = File.join("word", @relationships_hash[image_id])
+
+            extracted_imagename = extract_image(image_path_zip)
+
+            add = "![](#{ extracted_imagename })\n"
+          end
         else
           # ignore those nodes
           # puts ' ' * depth + "ELSE: #{ nd.name }"
