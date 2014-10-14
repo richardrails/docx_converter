@@ -121,7 +121,6 @@ module DocxConverter
       while i < children_count
         add = ""
         nd = node.children[i]
-        
         case nd.name
         when "body"
           # This is just a container element.
@@ -141,19 +140,24 @@ module DocxConverter
           
         when "pStyle"
           # This is a reference to one of Word's paragraph-level styles
-          if nd.text.present?
-            case nd["w:val"]
-              when "Title", "Nadpis"
-                add = "{: .class = 'title' }\n"
-              when "Heading1", "Nadpis1"
+          puts "w:val: #{nd["w:val"]}"
+          case nd["w:val"]
+            when "Title", "Nadpis"
+              add = "{: .class = 'title' }\n"
+            when "Heading1", "Nadpis1"
 
-                # require 'ruby-debug'; debugger; true;
-                add = "# "
-              when "Heading2", "Nadpis2"
-                add = "## "
-              when "Quote"
-                add = "> "
-            end
+              # require 'ruby-debug'; debugger; true;
+              add = "# "
+            when "Heading2", "Nadpis2"
+              add = "## "
+            when "Quote"
+              add = "> "
+            when "Odrka1", "seznam12", "Odstavecseseznamem"
+              add = "* "
+            when "seznam12", "Odstavecseseznamem"
+              add = "1. "
+            when "Odrka2"
+              add = "  * "
           end
 
         when "r"
@@ -165,7 +169,17 @@ module DocxConverter
           when "rPr"
             # This inline node is formatted. The first child always specifies the formatting of the subsequent 't' (text) node.
             format_node = first_child.children.first
+            puts "fomat node: #{format_node.name}"
             case format_node.name
+            when "vertAlign"
+              case format_node.attributes["val"].value
+              when 'superscript'
+                prefix = "<sup>" if nd.text.present?
+                postfix = "</sup>" if nd.text.present?
+              when 'subscript'
+                prefix = "<sub>" if nd.text.present?
+                postfix = "</sub>" if nd.text.present?
+              end
             when "b"
               # This is regular (non-style) bold
               prefix = postfix = "**" if nd.text.present?
@@ -222,27 +236,30 @@ module DocxConverter
           
         when "tr"
           # select all paragraph nodes below the table row and render them into Kramdown syntax
-          table_paragraphs = nd.xpath(".//w:p")
+          #table_paragraphs = nd.xpath(".//w:p")
+          table_paragraphs = nd.xpath(".//w:tc")
           td = []
           table_paragraphs.each do |tp|
-            td << parse_content(tp,depth)
+            td << parse_content(tp,depth).tr("\n", " ")
           end
           add = "|" + td.join("|") + "|\n"
           
-        when "drawing"
-          image_nodes = nd.xpath(".//a:blip", :a => 'http://schemas.openxmlformats.org/drawingml/2006/main')
-          image_node = image_nodes.first
-          if image_node
-            image_id = image_node.attributes["embed"].value
-            image_path_zip = File.join("word", @relationships_hash[image_id])
+        #when "drawing"
+          #image_nodes = nd.xpath(".//a:blip", :a => 'http://schemas.openxmlformats.org/drawingml/2006/main')
+          #image_node = image_nodes.first
+          #if image_node
+            #image_id = image_node.attributes["embed"].value
+            #image_path_zip = File.join("word", @relationships_hash[image_id])
 
-            extracted_imagename = extract_image(image_path_zip)
+            #extracted_imagename = extract_image(image_path_zip)
 
-            add = "![](#{ extracted_imagename })\n"
-          end
+            #add = "![](#{ extracted_imagename })\n"
+          #end
+        when "hyperlink"
+          add = "[#{nd.text}](#{nd.text})"
         else
           # ignore those nodes
-          # puts ' ' * depth + "ELSE: #{ nd.name }"
+          puts ' ' * depth + "ELSE: #{ nd.name }"
         end
         
         output += add
