@@ -140,7 +140,7 @@ module DocxConverter
           
         when "pStyle"
           # This is a reference to one of Word's paragraph-level styles
-          puts "w:val: #{nd["w:val"]}"
+          # puts "w:val: #{nd["w:val"]}"
           case nd["w:val"]
             when "Title", "Nadpis"
               add = "{: .class = 'title' }\n"
@@ -169,7 +169,7 @@ module DocxConverter
           when "rPr"
             # This inline node is formatted. The first child always specifies the formatting of the subsequent 't' (text) node.
             format_node = first_child.children.first
-            puts "fomat node: #{format_node.name}"
+            # puts "fomat node: #{format_node.name}"
             case format_node.name
             when "vertAlign"
               case format_node.attributes["val"].value
@@ -259,7 +259,7 @@ module DocxConverter
           add = "[#{nd.text}](#{nd.text})"
         else
           # ignore those nodes
-          puts ' ' * depth + "ELSE: #{ nd.name }"
+          # puts ' ' * depth + "ELSE: #{ nd.name }"
         end
         
         output += add
