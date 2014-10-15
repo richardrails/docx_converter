@@ -22,52 +22,53 @@ module DocxConverter
     def initialize(options)
       @output_dir = options[:output_dir]
       @docx_filepath = options[:inputfile]
-      
+
       @image_subdir_filesystem = options[:image_subdir_filesystem]
       @image_subdir_kramdown = options[:image_subdir_kramdown]
-      
+
       @relationships_hash = {}
-      
+
       @zipfile = Zip::ZipFile.new(@docx_filepath)
     end
-    
+
     def parse
       document_xml = unzip_read("word/document.xml")
       footnotes_xml = unzip_read("word/footnotes.xml")
       relationships_xml = unzip_read("word/_rels/document.xml.rels")
-      
+
       content = Nokogiri::XML(document_xml)
-      footnotes = Nokogiri::XML(footnotes_xml)
-      relationships = Nokogiri::XML(relationships_xml)
-      
+      footnotes = footnotes_xml ? Nokogiri::XML(footnotes_xml) : nil
+      relationships = relationships_xml ? Nokogiri::XML(relationships_xml) : nil
+
       @relationships_hash = parse_relationships(relationships)
 
       footnote_definitions = parse_footnotes(footnotes)
       output_content = parse_content(content.elements.first,0)
-      
+
       return {
         :content => output_content,
         :footnote_definitions => footnote_definitions
       }
     end
-    
+
     private
-    
+
     def unzip_read(zip_path)
       file = @zipfile.find_entry(zip_path)
+      return nil unless file
       contents = ""
       file.get_input_stream do |f|
         contents = f.read
       end
       return contents
     end
-    
+
     # this is only needed for embedded images
     def extract_image(zip_path)
       file_contents = unzip_read(zip_path)
       extract_basename = File.basename(zip_path, ".*") + ".jpg"
       extract_path = File.join(@output_dir, @image_subdir_filesystem, extract_basename)
-      
+
       fm = FileMagic.new
       filetype = fm.buffer(file_contents)
       case filetype
@@ -91,6 +92,7 @@ module DocxConverter
 
     def parse_relationships(relationships)
       output = {}
+      return output unless relationships
       relationships.children.first.children.each do |rel|
         rel_id = rel.attributes["Id"].value
         rel_target = rel.attributes["Target"].value
@@ -98,9 +100,10 @@ module DocxConverter
       end
       return output
     end
-    
+
     def parse_footnotes(node)
       output = {}
+      return output unless node
       node.xpath("//w:footnote").each do |fnode|
         footnote_number = fnode.attributes["id"].value
         if ["-1", "0"].include?(footnote_number)
@@ -117,7 +120,7 @@ module DocxConverter
       depth += 1
       children_count = node.children.length
       i = 0
-      
+
       while i < children_count
         add = ""
         nd = node.children[i]
@@ -125,19 +128,19 @@ module DocxConverter
         when "body"
           # This is just a container element.
           add = parse_content(nd,depth)
-          
+
         when "document"
           # This is just a container element.
           add = parse_content(nd,depth)
-          
+
         when "p"
           # This is a paragraph. In kramdown, paragraphs are spearated by an empty line.
           add = parse_content(nd,depth) + "\n\n"
-          
+
         when "pPr"
           # This is Word's paragraph-level preset
           add = parse_content(nd,depth)
-          
+
         when "pStyle"
           # This is a reference to one of Word's paragraph-level styles
           # puts "w:val: #{nd["w:val"]}"
@@ -219,21 +222,21 @@ module DocxConverter
           else
             add = parse_content(nd,depth)
           end
-          
-            
+
+
         when "t"
           # this is a regular text node
           add = nd.text
-          
+
         when "footnoteReference"
           # output the Kramdown footnote syntax
           footnote_number = nd.attributes["id"].value
           add = "[^#{ footnote_number }]"
-          
+
         when "tbl"
           # parse the table recursively
           add = parse_content(nd,depth)
-          
+
         when "tr"
           # select all paragraph nodes below the table row and render them into Kramdown syntax
           #table_paragraphs = nd.xpath(".//w:p")
@@ -243,7 +246,7 @@ module DocxConverter
             td << parse_content(tp,depth).tr("\n", " ")
           end
           add = "|" + td.join("|") + "|\n"
-          
+
         #when "drawing"
           #image_nodes = nd.xpath(".//a:blip", :a => 'http://schemas.openxmlformats.org/drawingml/2006/main')
           #image_node = image_nodes.first
@@ -261,7 +264,7 @@ module DocxConverter
           # ignore those nodes
           # puts ' ' * depth + "ELSE: #{ nd.name }"
         end
-        
+
         output += add
         i += 1
       end
@@ -269,6 +272,6 @@ module DocxConverter
       depth -= 1
       return output
     end
-    
+
   end
 end
