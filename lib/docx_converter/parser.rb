@@ -118,6 +118,7 @@ module DocxConverter
     def parse_content(node,depth)
       output = ""
       depth += 1
+
       children_count = node.children.length
       i = 0
 
@@ -259,7 +260,12 @@ module DocxConverter
             #add = "![](#{ extracted_imagename })\n"
           #end
         when "hyperlink"
-          add = "[#{nd.text}](#{nd.text})"
+          if nd.attributes["id"].present?
+            url = @relationships_hash[nd.attributes["id"].value]
+            add = "[#{nd.text}](#{url}){:target='_blank'}"
+          else
+            add = "[#{nd.text}](#){:target='_blank'}"
+          end
         else
           # ignore those nodes
           # puts ' ' * depth + "ELSE: #{ nd.name }"
