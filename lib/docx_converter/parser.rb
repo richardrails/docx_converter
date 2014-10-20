@@ -125,6 +125,7 @@ module DocxConverter
       while i < children_count
         add = ""
         nd = node.children[i]
+        #puts nd.name
         case nd.name
         when "body"
           # This is just a container element.
@@ -142,6 +143,11 @@ module DocxConverter
           # This is Word's paragraph-level preset
           add = parse_content(nd,depth)
 
+        when "numPr"
+          indent = nd.xpath('.//w:ilvl')[0].values[0]
+          if nd.parent.next.name == "r"
+            add = (' ' * indent.to_i*2) << "* " <<  parse_content(nd.parent.next, depth-1)
+          end
         when "pStyle"
           # This is a reference to one of Word's paragraph-level styles
           # puts "w:val: #{nd["w:val"]}"
