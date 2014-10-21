@@ -145,7 +145,7 @@ module DocxConverter
 
         when "numPr"
           indent = nd.xpath('.//w:ilvl')[0].values[0]
-          if nd.parent.next.name == "r"
+          if nd.parent.next && nd.parent.next.name == "r"
             add = (' ' * indent.to_i*2) << "* " <<  parse_content(nd.parent.next, depth-1)
           end
         when "pStyle"
