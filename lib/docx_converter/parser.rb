@@ -94,9 +94,11 @@ module DocxConverter
       output = {}
       return output unless relationships
       relationships.children.first.children.each do |rel|
-        rel_id = rel.attributes["Id"].value
-        rel_target = rel.attributes["Target"].value
-        output[rel_id] = rel_target
+        if rel.attributes['Id'].present?
+          rel_id = rel.attributes["Id"].value
+          rel_target = rel.attributes["Target"].value
+          output[rel_id] = rel_target
+        end
       end
       return output
     end
@@ -175,61 +177,67 @@ module DocxConverter
           prefix = postfix = ""
           first_child = nd.children.first
 
-          case first_child.name
-          when "rPr"
-            # This inline node is formatted. The first child always specifies the formatting of the subsequent 't' (text) node.
-            format_node = first_child.children.first
-            # puts "fomat node: #{format_node.name}"
-            case format_node.name
-            when "vertAlign"
-              case format_node.attributes["val"].value
-              when 'superscript'
-                prefix = "<sup>" if nd.text.present?
-                postfix = "</sup>" if nd.text.present?
-              when 'subscript'
-                prefix = "<sub>" if nd.text.present?
-                postfix = "</sub>" if nd.text.present?
-              end
-            when "b"
-              # This is regular (non-style) bold
-              prefix = postfix = "**" if nd.text.present?
-              when "i"
-              # This is regular (non-style) italic
-              prefix = postfix = "*" if nd.text.present?
-            when "smallCaps"
-              # This is regular (non-style) italic
-              prefix = " name("
-              postfix = ")"
+          if first_child
+            case first_child.name
+            when "rPr"
+              # This inline node is formatted. The first child always specifies the formatting of the subsequent 't' (text) node.
+              format_node = first_child.children.first
+              # puts "fomat node: #{format_node.name}"
+              if format_node
 
-            when "rStyle"
-              # This is a reference to one of Word's style names
-              case format_node.attributes["val"].value
-              when "Strong"
-                # "Strong" is a predefined Word style
-                # This node is missing the xml:space="preserve" attribute, so we need to set the spaces ourselves.
-                prefix = " **"  if nd.text.present?
-                postfix = "** " if nd.text.present?
-              when /Emph.*/
-                # "Emph..." is a predefined Word style. In English Word it's 'Emphasis', in French it's 'Emphaseitaliques'
-                # This node is missing the xml:space="preserve" attribute, so we need to set the spaces ourselves.
-                prefix = " *"  if nd.text.present?
-                postfix = "* "  if nd.text.present?
-              end
-            end
-            add = prefix + parse_content(nd,depth) + postfix
-          when "br"
-            if first_child.attributes.empty?
-              # This is a line break. In kramdown, this corresponds to two spaces followed by a newline.
-              add = "  \n"
-            else first_child.attributes["type"] == "page"
-              # this is a Word page break
-              add = "<br style='page-break-before:always;'>"
-            end
+                case format_node.name
+                when "vertAlign"
+                  case format_node.attributes["val"].value
+                  when 'superscript'
+                    prefix = "<sup>" if nd.text.present?
+                    postfix = "</sup>" if nd.text.present?
+                  when 'subscript'
+                    prefix = "<sub>" if nd.text.present?
+                    postfix = "</sub>" if nd.text.present?
+                  end
+                when "b"
+                  # This is regular (non-style) bold
+                  prefix = postfix = "**" if nd.text.present?
+                  when "i"
+                  # This is regular (non-style) italic
+                  prefix = postfix = "*" if nd.text.present?
+                when "smallCaps"
+                  # This is regular (non-style) italic
+                  prefix = " name("
+                  postfix = ")"
 
+                when "rStyle"
+                  # This is a reference to one of Word's style names
+                  case format_node.attributes["val"].value
+                  when "Strong"
+                    # "Strong" is a predefined Word style
+                    # This node is missing the xml:space="preserve" attribute, so we need to set the spaces ourselves.
+                    prefix = " **"  if nd.text.present?
+                    postfix = "** " if nd.text.present?
+                  when /Emph.*/
+                    # "Emph..." is a predefined Word style. In English Word it's 'Emphasis', in French it's 'Emphaseitaliques'
+                    # This node is missing the xml:space="preserve" attribute, so we need to set the spaces ourselves.
+                    prefix = " *"  if nd.text.present?
+                    postfix = "* "  if nd.text.present?
+                  end
+                end
+              end
+              add = prefix + parse_content(nd,depth) + postfix
+            when "br"
+              if first_child.attributes.empty?
+                # This is a line break. In kramdown, this corresponds to two spaces followed by a newline.
+                add = "  \n"
+              else first_child.attributes["type"] == "page"
+                # this is a Word page break
+                add = "<br style='page-break-before:always;'>"
+              end
+
+            else
+              add = parse_content(nd,depth)
+            end
           else
-            add = parse_content(nd,depth)
+          # add = parse_content(nd,depth)
           end
-
 
         when "t"
           # this is a regular text node
